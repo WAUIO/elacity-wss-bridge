@@ -18,3 +18,5 @@
     - 'europe-west1-b'
   images:
   - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
+  options:
+    logging: CLOUD_LOGGING_ONLY
