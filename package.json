@@ -2,9 +2,9 @@
   "name": "websocket-proxy",
   "version": "1.0.0",
   "description": "Websocket Proxy over HTTP(S) protocol",
-  "main": "server.js",
+  "main": "api/index.js",
   "scripts": {
-    "start": "node server.js --addr 0.0.0.0 --port 3000",
+    "start": "node api/server.js --addr 0.0.0.0 --port 3000",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -27,5 +27,8 @@
     "arg": "^5.0.2",
     "express": "^4.18.2",
     "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }

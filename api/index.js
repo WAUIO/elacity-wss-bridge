@@ -107,3 +107,5 @@ wss.on('connection', handleConnection);
 server.listen(target_port, () => {
   console.log(`serving at ${target_host}:${target_port}...`);
 });
+
+module.exports = app;

@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "Websocket Proxy",
-      "program": "${workspaceFolder}/server.js",
+      "program": "${workspaceFolder}/api/index.js",
       "request": "launch",
       "skipFiles": [
         "<node_internals>/**"
