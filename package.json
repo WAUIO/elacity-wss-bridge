@@ -1,0 +1,31 @@
+{
+  "name": "websocket-proxy",
+  "version": "1.0.0",
+  "description": "Websocket Proxy over HTTP(S) protocol",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js --addr 0.0.0.0 --port 3000",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@bitbucket.org/wausolutions/websocket-proxy.git"
+  },
+  "keywords": [
+    "proxy",
+    "websocket",
+    "wss",
+    "https"
+  ],
+  "author": "WAU I/O",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://bitbucket.org/wausolutions/websocket-proxy/issues"
+  },
+  "homepage": "https://bitbucket.org/wausolutions/websocket-proxy#readme",
+  "dependencies": {
+    "arg": "^5.0.2",
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  }
+}
