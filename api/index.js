@@ -126,4 +126,8 @@ server.listen(target_port, () => {
   console.log(`listener bound to ${target_host}:${target_port}...`);
 });
 
+process.on('exit', (code) => {
+  console.log('exiting process, code=', code);
+});
+
 module.exports = app;
