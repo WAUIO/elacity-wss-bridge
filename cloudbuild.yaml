@@ -15,7 +15,7 @@
     - '--image'
     - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
     - '--region'
-    - 'europe-west1-b'
+    - 'europe-west1'
   images:
   - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
   options:
