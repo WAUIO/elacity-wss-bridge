@@ -22,7 +22,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const target_host = args['--addr'] || '0.0.0.0';
-const target_port = args['--port'] || 8080;
+const target_port = args['--port'] || process.env.SERVER_PORT || 3000;
 
 const passThroughHeaders = [
   'content-type',
@@ -105,7 +105,7 @@ wss.on('connection', handleConnection);
 
 // Override the server.listen method to start both HTTP and WebSocket server on the same port
 server.listen(target_port, () => {
-  console.log(`serving at ${target_host}:${target_port}...`);
+  console.log(`listener bound to ${target_host}:${target_port}...`);
 });
 
 module.exports = app;
