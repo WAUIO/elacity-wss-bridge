@@ -1,13 +1,17 @@
 const arg = require('arg');
 const express = require('express');
+const fs = require('fs');
 const net = require('net');
 const http = require('http');
+const https = require('https');
 const WebSocket = require('ws');
 const log = require('debug')('ws-proxy');
 
 const args = arg({
   '--port': Number,
   '--addr': String,
+  '--ssl-cert': String,
+  '--ssl-key': String,
   '--debug': Boolean,
 }, {
   permissive: true
@@ -17,12 +21,21 @@ if (args['--debug']) {
   process.env.DEBUG = "*";
 }
 
-const app = express();
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
 const target_host = args['--addr'] || '0.0.0.0';
 const target_port = args['--port'] || process.env.SERVER_PORT || 3000;
+
+let server;
+
+const app = express();
+if (args['--ssl-cert'] && args['--ssl-key']) {
+  server = https.createServer({
+    key: fs.readFileSync(args['--ssl-key']),
+    cert: fs.readFileSync(args['--ssl-cert']),
+  }, app);
+} else {
+  server = http.createServer(app);
+}
+const wss = new WebSocket.Server({ server });
 
 const passThroughHeaders = [
   'content-type',
@@ -62,9 +75,10 @@ app.get('/:path*', async (req, res) => {
 
 // Handle new WebSocket client
 const handleConnection = function (client, req) {
+  client.isAlive = true;
   const clientAddr = client._socket.remoteAddress;
 
-  log(`WebSocket connection, version=${client.protocolVersion || 'unknown'}, sub=${client.protocol}, addr=${clientAddr}`);
+  log(`new connection, version=${client.protocolVersion || 'unknown'}, sub=${client.protocol}, addr=${clientAddr}`);
 
   const target = net.createConnection(target_port, target_host, function () {
     log('connected to target');
@@ -102,6 +116,10 @@ const handleConnection = function (client, req) {
 };
 
 wss.on('connection', handleConnection);
+
+server.on('upgrade', function (req, socket, head) {
+  console.log({ req, socket, head })
+});
 
 // Override the server.listen method to start both HTTP and WebSocket server on the same port
 server.listen(target_port, () => {
