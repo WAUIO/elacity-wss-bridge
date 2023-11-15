@@ -51,10 +51,17 @@ const passThroughHeaders = [
   'access-control-expose-headers',
 ];
 
+const domainsWhitelist = JSON.parse(fs.readFileSync('domains.json', 'utf8'));
+
 app.use('/.well-known', express.static('.well-known'));
 
 app.get('/:path*', async (req, res) => {
   const url = req.originalUrl;
+
+  const targetHost = url.replaceAll(/^\//ig, '').split('/').shift();
+  if (!domainsWhitelist.includes(targetHost)) {
+    return res.status(406).send(`unsupported host ${targetHost}`);
+  }
 
   try {
     const r = await fetch(`https://${url}`, {
