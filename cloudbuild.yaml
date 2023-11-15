@@ -1,22 +1,57 @@
   steps:
-  # Build the container image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'ci/images/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA', '.']
-  # Push the container image to Container Registry
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA']
-  # Deploy container image to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  # Compute Engine CI
+  - name: node
+    entrypoint: npm
+    args: ['install']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: copy-files
     entrypoint: gcloud
     args:
-    - 'run'
-    - 'deploy'
-    - 'wss-bridge'
-    - '--image'
-    - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
-    - '--region'
-    - 'europe-west1'
-  images:
-  - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
+    - 'compute'
+    - 'copy-files'
+    - '--project'
+    - '$PROJECT_ID'
+    - '--zone'
+    - 'europe-west1-b'
+    - '/workspace/ci'
+    - '/workspace/api'
+    - '/workspace/.well-known'
+    - '/workspace/package.json'
+    - '/workspace/package-lock.json'
+    - '/workspace/ecosystem.config.js'
+    - 'root@wss-bridge:/var/www/wss-bridge/$BRANCH_NAME'
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: relaunch-service
+    entrypoint: gcloud
+    args:
+    - 'compute'
+    - 'ssh'
+    - 'root@wss-bridge'
+    - '--project'
+    - '$PROJECT_ID'
+    - '--zone'
+    - 'europe-west1-b'
+    - '--command'
+    - 'sh -c "/var/www/wss-bridge/$BRANCH_NAME/ci/scripts/deploy.sh $BRANCH_NAME"'  
+  # Cloud Run CI
+  # # Build the container image
+  # - name: 'gcr.io/cloud-builders/docker'
+  #   args: ['build', '-f', 'ci/images/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA', '.']
+  # # Push the container image to Container Registry
+  # - name: 'gcr.io/cloud-builders/docker'
+  #   args: ['push', 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA']
+  # # Deploy container image to Cloud Run
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   entrypoint: gcloud
+  #   args:
+  #   - 'run'
+  #   - 'deploy'
+  #   - 'wss-bridge'
+  #   - '--image'
+  #   - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
+  #   - '--region'
+  #   - 'europe-west1'
+  # images:
+  # - 'gcr.io/$PROJECT_ID/wss-bridge:$COMMIT_SHA'
   options:
     logging: CLOUD_LOGGING_ONLY
