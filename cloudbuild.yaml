@@ -19,6 +19,7 @@
     - '/workspace/package.json'
     - '/workspace/package-lock.json'
     - '/workspace/ecosystem.config.js'
+    - '/workspace/domains.json'
     - 'root@wss-bridge:/var/www/wss-bridge/$BRANCH_NAME'
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: relaunch-service
