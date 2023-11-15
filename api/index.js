@@ -49,7 +49,9 @@ const passThroughHeaders = [
   'access-control-allow-headers',
   'access-control-allow-methods',
   'access-control-expose-headers',
-]
+];
+
+app.use('/.well-known', express.static('.well-known'));
 
 app.get('/:path*', async (req, res) => {
   const url = req.originalUrl;
@@ -116,10 +118,6 @@ const handleConnection = function (client, req) {
 };
 
 wss.on('connection', handleConnection);
-
-server.on('upgrade', function (req, socket, head) {
-  console.log({ req, socket, head })
-});
 
 // Override the server.listen method to start both HTTP and WebSocket server on the same port
 server.listen(target_port, () => {
