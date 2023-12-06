@@ -10,8 +10,14 @@ const log = require('debug')('ws-proxy');
 const args = arg({
   '--port': Number,
   '--addr': String,
+  '--ipfs-node': String,
   '--ssl-cert': String,
   '--ssl-key': String,
+  // When enable, we will serve unsecure connection
+  // over HTTP, the port for this one is deducted
+  // from --port + 1
+  // ensure both successisve ports are available 
+  '--serve-unsecure': Boolean,
   '--debug': Boolean,
 }, {
   permissive: true
@@ -22,20 +28,32 @@ if (args['--debug']) {
 }
 
 const target_host = args['--addr'] || '0.0.0.0';
-const target_port = args['--port'] || process.env.SERVER_PORT || 3000;
+const target_port = [args['--port'] || process.env.SERVER_PORT || 3000];
+const ipfs_node = args['--ipfs-node'] || 'https://cdn.ela.city';
 
-let server;
+let sslEnabled = false;
+const servers = [];
 
 const app = express();
 if (args['--ssl-cert'] && args['--ssl-key']) {
-  server = https.createServer({
+  servers.push(https.createServer({
     key: fs.readFileSync(args['--ssl-key']),
     cert: fs.readFileSync(args['--ssl-cert']),
-  }, app);
-} else {
-  server = http.createServer(app);
+  }, app));
+  sslEnabled = true;
 }
-const wss = new WebSocket.Server({ server });
+
+if (sslEnabled && args['--serve-unsecure']) {
+  target_port.push((parseInt(target_port[0], 10) + 1));
+}
+
+if (servers.length === 0 || (sslEnabled && args['--serve-unsecure'])) {
+  servers.push(http.createServer(app));
+}
+
+const wss = servers.map(
+  (srv) => new WebSocket.Server({ server: srv })
+);
 
 const passThroughHeaders = [
   'content-type',
@@ -53,18 +71,26 @@ const passThroughHeaders = [
 
 const domainsWhitelist = JSON.parse(fs.readFileSync('domains.json', 'utf8'));
 
+app.use(require('morgan')('short'));
 app.use('/.well-known', express.static('.well-known'));
 
 app.get('/:path*', async (req, res) => {
   const url = req.originalUrl;
 
   const targetHost = url.replaceAll(/^\//ig, '').split('/').shift();
-  if (!domainsWhitelist.includes(targetHost)) {
+  if (!url.startsWith('/ipfs/') && !domainsWhitelist.includes(targetHost)) {
     return res.status(406).send(`unsupported host ${targetHost}`);
   }
 
+  let targetURL = '';
+  if (url.startsWith('/ipfs/')) {
+    targetURL = `${ipfs_node}${url}`;
+  } else {
+    targetURL = `https://${url}`;
+  }
+
   try {
-    const r = await fetch(`https://${url}`, {
+    const r = await fetch(targetURL, {
       responseType: 'arraybuffer',
     });
 
@@ -83,53 +109,58 @@ app.get('/:path*', async (req, res) => {
 });
 
 // Handle new WebSocket client
-const handleConnection = function (client, req) {
-  client.isAlive = true;
-  const clientAddr = client._socket.remoteAddress;
+wss.forEach((ws, index) => {
+  ws.on('connection', function (client, req) {
+    client.isAlive = true;
+    const clientAddr = client._socket.remoteAddress;
 
-  log(`new connection, version=${client.protocolVersion || 'unknown'}, sub=${client.protocol}, addr=${clientAddr}`);
+    log(`new connection, version=${client.protocolVersion || 'unknown'}, sub=${client.protocol}, addr=${clientAddr}`);
 
-  const target = net.createConnection(target_port, target_host, function () {
-    log('connected to target');
-  });
+    const target = net.createConnection(target_port[index], target_host, function () {
+      log('connected to target');
+    });
 
-  target.on('data', function (data) {
-    try {
-      client.send(data);
-    } catch (e) {
-      log("Client closed, cleaning up target");
+    target.on('data', function (data) {
+      try {
+        log('target received data, sending to client', data);
+        client.send(data);
+      } catch (e) {
+        log("Client closed, cleaning up target");
+        target.end();
+      }
+    });
+    target.on('end', function () {
+      log('target disconnected');
+      client.close();
+    });
+    target.on('error', function () {
+      log('target connection error');
       target.end();
-    }
-  });
-  target.on('end', function () {
-    log('target disconnected');
-    client.close();
-  });
-  target.on('error', function () {
-    log('target connection error');
-    target.end();
-    client.close();
-  });
+      client.close();
+    });
 
-  client.on('message', function (msg) {
-    target.write(msg);
-  });
-  client.on('close', function (code, reason) {
-    log('WebSocket client disconnected: ' + code + ' [' + reason + ']');
-    target.end();
-  });
-  client.on('error', function (a) {
-    log('WebSocket client error: ' + a);
-    target.end();
-  });
-};
+    client.on('message', function (msg) {
+      log('ws client received data, writting to target', msg);
+      target.write(msg);
+    });
 
-wss.on('connection', handleConnection);
+    client.on('close', function (code, reason) {
+      log('WebSocket client disconnected: ' + code + ' [' + reason + ']');
+      target.end();
+    });
+    client.on('error', function (a) {
+      log('WebSocket client error: ' + a);
+      target.end();
+    });
+  });
+});
 
 // Override the server.listen method to start both HTTP and WebSocket server on the same port
-server.listen(target_port, () => {
-  console.log(`listener bound to ${target_host}:${target_port}...`);
-});
+servers.forEach((server, index) => {
+  server.listen(target_port[index], () => {
+    console.log(`listener bound to ${target_host}:${target_port[index]}...`);
+  });
+})
 
 process.on('exit', (code) => {
   console.log('exiting process, code=', code);
