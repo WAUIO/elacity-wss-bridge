@@ -90,6 +90,7 @@ app.get('/:path*', async (req, res) => {
   }
 
   try {
+    log(`fetching ${targetURL}`);
     const r = await fetch(targetURL, {
       responseType: 'arraybuffer',
     });
@@ -129,8 +130,8 @@ wss.forEach((ws, index) => {
         target.end();
       }
     });
-    target.on('end', function () {
-      log('target disconnected');
+    target.on('end', function (...args) {
+      log('target ended', args);
       client.close();
     });
     target.on('error', function () {

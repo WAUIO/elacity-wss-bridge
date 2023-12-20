@@ -26,5 +26,27 @@
         "NODE_ENV": "development"
       }
     },
+    {
+      "name": "(Local) Websocket Proxy",
+      "program": "${workspaceFolder}/api/index.js",
+      "request": "launch",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "node",
+      "args": [
+        "--addr", "0.0.0.0",
+        "--port", "18080",
+        "--ipfs-node", "http://127.0.0.1:8080",
+        "--serve-unsecure",
+        "--ssl-key", ".certs/key.pem", 
+        "--ssl-cert", ".certs/cert.pem"
+      ],
+      "outputCapture": "std",
+      "env": {
+        "DEBUG": "*",
+        "NODE_ENV": "development"
+      }
+    },    
   ]
 }
